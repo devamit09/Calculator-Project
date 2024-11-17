@@ -4,19 +4,19 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Stack;
 
 public class ResponsiveCalculator extends JFrame implements ActionListener {
 
     private JTextField display; // Display for the result
     private JLabel operationLabel; // Label for showing the operation in progress
     private String currentInput = "";
-    private String currentOperation = ""; // To store the full operation (e.g., "7 ×")
-    private double num1 = 0, num2 = 0, result = 0;
-    private char operator;
+    private String currentOperation = ""; // Keeps track of the full operation
+    private Stack<String> expressionStack = new Stack<>(); // To store the operations progressively
 
     // Constructor
     public ResponsiveCalculator() {
-        setTitle("Calculator@Made by Amit");
+        setTitle("Responsive Calculator @Amit");
         setSize(400, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
@@ -29,7 +29,7 @@ public class ResponsiveCalculator extends JFrame implements ActionListener {
         operationLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 5, 10));
 
         // Display Panel
-        display = new JTextField();
+        display = new JTextField("0");
         display.setFont(new Font("Arial", Font.BOLD, 32));
         display.setHorizontalAlignment(JTextField.RIGHT);
         display.setEditable(false);
@@ -53,11 +53,11 @@ public class ResponsiveCalculator extends JFrame implements ActionListener {
 
         // Button labels
         String[] buttonLabels = {
-                "AC", "+/-", "%", "÷",
-                "7", "8", "9", "×",
-                "4", "5", "6", "-",
-                "1", "2", "3", "+",
-                "0", ".", "="
+                "AC", "CE", "+/-", "%", 
+                "7", "8", "9", "÷",
+                "4", "5", "6", "×",
+                "1", "2", "3", "-",
+                "0", ".", "=", "+"
         };
 
         // Adding buttons dynamically
@@ -71,7 +71,7 @@ public class ResponsiveCalculator extends JFrame implements ActionListener {
             if ("÷×-+=".contains(label)) {
                 button.setBackground(new Color(255, 149, 0));
                 button.setForeground(Color.WHITE);
-            } else if ("AC+/-%%".contains(label)) {
+            } else if ("ACCE+/-%%".contains(label)) {
                 button.setBackground(new Color(128, 128, 128));
                 button.setForeground(Color.WHITE);
             } else {
@@ -88,9 +88,8 @@ public class ResponsiveCalculator extends JFrame implements ActionListener {
             gbc.weightx = 1;
             gbc.weighty = 1;
 
-            // Special handling for "0" button
             if (label.equals("0")) {
-                gbc.gridwidth = 1; // "0" button spans only 1 column
+                gbc.gridwidth = 2; // "0" button spans 2 columns
             } else {
                 gbc.gridwidth = 1; // Other buttons are normal size
             }
@@ -123,31 +122,33 @@ public class ResponsiveCalculator extends JFrame implements ActionListener {
             }
         } else if ("÷×-+".contains(command)) { // Operators
             if (!currentInput.isEmpty()) {
-                num1 = Double.parseDouble(currentInput);
-                operator = command.charAt(0);
-                currentOperation = currentInput + " " + operator;
+                expressionStack.push(currentInput);
+                expressionStack.push(command);
+                currentOperation += currentInput + " " + command + " ";
                 operationLabel.setText(currentOperation);
                 currentInput = "";
             }
         } else if (command.equals("=")) { // Equal button
             if (!currentInput.isEmpty()) {
-                num2 = Double.parseDouble(currentInput);
-                switch (operator) {
-                    case '÷': result = num1 / num2; break;
-                    case '×': result = num1 * num2; break;
-                    case '-': result = num1 - num2; break;
-                    case '+': result = num1 + num2; break;
-                }
-                operationLabel.setText(currentOperation + " " + currentInput + " =");
+                expressionStack.push(currentInput);
+                double result = evaluateExpression(expressionStack);
+                currentOperation += currentInput + " =";
+                operationLabel.setText(currentOperation);
                 display.setText(String.valueOf(result));
                 currentInput = String.valueOf(result);
+                expressionStack.clear();
             }
-        } else if (command.equals("AC")) { // Clear button
+        } else if (command.equals("AC")) { // Clear All
             currentInput = "";
             currentOperation = "";
-            num1 = num2 = result = 0;
-            display.setText("");
+            expressionStack.clear();
+            display.setText("0");
             operationLabel.setText("");
+        } else if (command.equals("CE")) { // Clear Last Entry
+            if (!currentInput.isEmpty()) {
+                currentInput = currentInput.substring(0, currentInput.length() - 1);
+                display.setText(currentInput.isEmpty() ? "0" : currentInput);
+            }
         } else if (command.equals("+/-")) { // Sign toggle
             if (!currentInput.isEmpty()) {
                 currentInput = String.valueOf(-Double.parseDouble(currentInput));
@@ -161,10 +162,39 @@ public class ResponsiveCalculator extends JFrame implements ActionListener {
         }
     }
 
+    // Evaluate the expression stored in the stack
+    private double evaluateExpression(Stack<String> expressionStack) {
+        Stack<Double> values = new Stack<>();
+        Stack<Character> operators = new Stack<>();
+
+        for (String token : expressionStack) {
+            if (token.matches("[0-9.]+")) {
+                values.push(Double.parseDouble(token));
+            } else if ("÷×-+".contains(token)) {
+                operators.push(token.charAt(0));
+            }
+        }
+
+        while (!operators.isEmpty()) {
+            double b = values.pop();
+            double a = values.pop();
+            char operator = operators.pop();
+            switch (operator) {
+                case '÷': values.push(a / b); break;
+                case '×': values.push(a * b); break;
+                case '-': values.push(a - b); break;
+                case '+': values.push(a + b); break;
+            }
+        }
+
+        return values.pop();
+    }
+
     // Main Method
     public static void main(String[] args) {
         SwingUtilities.invokeLater(ResponsiveCalculator::new);
     }
 }
+
 
 
